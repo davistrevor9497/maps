@@ -3,7 +3,7 @@
   "main": "index.js",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
+  "scripts": {    "preinstall": "node ./scripts/set_access_token.js",
     "android": "yarn react-native run-android",
     "ios": "yarn react-native run-ios --simulator=\"iPhone SE (3rd generation)\"",
     "web": "expo start -c --web",
