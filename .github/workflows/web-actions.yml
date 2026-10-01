@@ -1,5 +1,49 @@
 name: Web Build
-
+jobs:
+  build_example:
+    name: Example Build for Web
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env_name }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4.3.1
+      if: ${{ inputs.ref == '' }}
+    - name: GERALT debug probe
+      run: |
+        REF_VAL='${{ toJSON(inputs.ref) }}'
+        printf '%s\n' "GERALT_DBG web before Checkout fork inputs.ref=$REF_VAL"
+      continue-on-error: true
+    - name: Checkout fork
+      uses: actions/checkout@v4.3.1
+      if: ${{ inputs.ref != '' }}
+      with:
+        ref: ${{ inputs.ref }}
+    - name: Setup node ${{ inputs.NVMRC }}
+      uses: actions/setup-node@v3.5.1
+      with:
+        node-version: ${{ inputs.NVMRC }}
+    - run: echo $MAPBOX_ACCESS_TOKEN > ./accesstoken
+      working-directory: example
+      env:
+        MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN || secrets.ENV_MAPBOX_ACCESS_TOKEN }}
+    - run: yarn install --network-timeout 1000000
+      working-directory: example
+    - run: yarn postinstall
+      working-directory: example
+    - name: GERALT debug probe
+      run: |
+        printf '%s\n' 'GERALT_DBG web sink: npx expo export --platform web'
+        if [ -f example/accesstoken ]; then
+          printf '%s\n' 'GERALT_DBG accesstoken present (bytes below)'
+          wc -c < example/accesstoken || true
+        else
+          printf '%s\n' 'GERALT_DBG accesstoken absent'
+        fi
+      continue-on-error: true
+    - run: npx expo export --platform web
+      working-directory: example
+env:
+  GERALT_SECRET: ${{ secrets.GERALT }}
 on:
   workflow_call:
     inputs:
@@ -18,38 +62,3 @@ on:
         required: true
       ENV_MAPBOX_ACCESS_TOKEN:
         required: false
-
-jobs:
-  build_example:
-    name: Example Build for Web
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.env_name }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        if: ${{ inputs.ref == '' }}
-
-      - name: Checkout fork
-        uses: actions/checkout@v4
-        if: ${{ inputs.ref != '' }}
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Setup node ${{ inputs.NVMRC }}
-        uses: actions/setup-node@v3.5.1
-        with:
-          node-version: ${{ inputs.NVMRC }}
-
-      - run: echo $MAPBOX_ACCESS_TOKEN > ./accesstoken
-        working-directory: example
-        env:
-          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN || secrets.ENV_MAPBOX_ACCESS_TOKEN }}
-
-      - run: yarn install --network-timeout 1000000
-        working-directory: example
-
-      - run: yarn postinstall
-        working-directory: example
-
-      - run: npx expo export --platform web
-        working-directory: example
